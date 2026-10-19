@@ -60,3 +60,15 @@ def test_sampled_params_within_ranges():
     p = sample_driver_params(1000, rng)
     assert p["v0"].min() > 24.0 * 0.94 and p["v0"].max() < 33.0 * 1.06
     assert p["T"].min() > 1.0 * 0.94 and p["T"].max() < 1.8 * 1.06
+
+
+def test_mild_braking_for_distant_slower_cut_in():
+    # Merging car 35 m ahead, 7 m/s slower: no emergency braking needed.
+    a = idm_accel(22.0, 35.0, 7.0, **P)
+    assert -3.5 < a < 0.0
+
+
+def test_hard_braking_for_close_slower_cut_in():
+    # Merging car 6 m ahead and 10 m/s slower: must brake hard.
+    a = idm_accel(25.0, 6.0, 10.0, **P)
+    assert a < -6.0

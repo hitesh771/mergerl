@@ -16,6 +16,20 @@ Intuition:
                        extra term when closing in on the leader). If the
                        real gap s is smaller than s_star the car brakes.
 
+Cut-in correction (ACC / "improved IDM" idea, Kesting, Treiber & Helbing
+2010): plain IDM over-reacts when a car suddenly appears in front of it
+(e.g. for a merging car 35 m ahead and 7 m/s slower plain IDM brakes at
+~7 m/s^2 although ~0.7 m/s^2 would be enough). We therefore also compute the
+deceleration a calm driver needs under the "constant-acceleration
+heuristic" (CAH): assume the leader keeps its speed, then braking at
+    a_cah = - dv^2 / (2 s)            (only if closing in, dv > 0)
+just avoids a collision. If IDM wants to brake harder than a_cah the two
+are blended:
+    a = (1 - c) a_idm + c [a_cah + b tanh((a_idm - a_cah) / b)],  c = 0.99
+so the driver brakes at most about b harder than strictly necessary. When
+the situation is really critical (a_cah itself large) braking is still
+hard, which is exactly what our "hard brake" safety metric should detect.
+
 All functions work on numpy arrays so a whole lane of cars is updated with a
 handful of vector operations (no Python loop over cars).
 """
@@ -36,6 +50,7 @@ FREE_GAP = 1e4
 CAUTIOUS = {"v0": 24.0, "T": 1.8, "a_max": 1.0, "b": 1.5, "s0": 2.5}
 AGGRESSIVE = {"v0": 33.0, "T": 1.0, "a_max": 2.0, "b": 2.5, "s0": 1.5}
 DELTA = 4.0
+COOLNESS = 0.99
 
 
 def sample_driver_params(n: int, rng: np.random.Generator) -> dict:
@@ -54,7 +69,7 @@ def sample_driver_params(n: int, rng: np.random.Generator) -> dict:
 
 
 def idm_accel(v, gap, dv, v0, T, a_max, b, s0, delta=DELTA, b_max=B_MAX):
-    """Vectorised IDM acceleration.
+    """Vectorised IDM acceleration (with the CAH cut-in correction).
 
     Args:
         v:     own speed [m/s]
@@ -68,11 +83,19 @@ def idm_accel(v, gap, dv, v0, T, a_max, b, s0, delta=DELTA, b_max=B_MAX):
         acceleration [m/s^2], clipped to [-b_max, a_max].
     """
     v = np.asarray(v, dtype=float)
+    dv = np.asarray(dv, dtype=float)
     # Desired dynamic gap. max(., s0) keeps it from going below the jam
     # distance when the leader is much faster (dv very negative).
     s_star = s0 + np.maximum(0.0, v * T + v * dv / (2.0 * np.sqrt(a_max * b)))
     # A gap <= 0 means overlap (crash); use a tiny positive value so the
     # formula yields maximal braking instead of dividing by zero.
     s = np.maximum(gap, 0.01)
-    accel = a_max * (1.0 - (v / v0) ** delta - (s_star / s) ** 2)
+    a_idm = a_max * (1.0 - (v / v0) ** delta - (s_star / s) ** 2)
+
+    # Constant-acceleration heuristic: braking needed so that the closing
+    # speed dv reaches zero within the remaining gap.
+    # Only used when closing in (dv > 0) and IDM brakes harder than CAH.
+    a_cah = -np.maximum(dv, 0.0) ** 2 / (2.0 * s)
+    blended = (1.0 - COOLNESS) * a_idm + COOLNESS * (a_cah + b * np.tanh((a_idm - a_cah) / b))
+    accel = np.where((dv > 0.0) & (a_idm < a_cah), blended, a_idm)
     return np.clip(accel, -b_max, a_max)
