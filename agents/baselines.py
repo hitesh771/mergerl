@@ -3,7 +3,7 @@
 All agents share the interface `act(obs, env) -> action in [-1, 1]`, where
 `env` is the (unwrapped) MergeEnv. The rule-based agents read the simulator
 state directly (positions and speeds of all cars), i.e. they have *more*
-information than the RL agents, which only see the 12-d observation.
+information than the RL agents, which only see the 13-d observation.
 """
 import numpy as np
 

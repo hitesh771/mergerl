@@ -21,7 +21,7 @@ every `action_repeat` = 2 sub-steps, i.e. at 5 Hz. This halves the episode
 length in decisions (easier credit assignment) while keeping an accurate
 simulation.
 
-Observation (12 values, roughly in [-1, 1]):
+Observation (13 values, roughly in [-1, 1]):
 
     idx  name              definition                                   scale
     ---  ----------------  -------------------------------------------  ---------
@@ -37,10 +37,11 @@ Observation (12 values, roughly in [-1, 1]):
     9    lag_speed         v_lag / V_SCALE                              [0, 1.2]
     10   density           density / 50 veh/km                          [0, 1.5]
     11   prev_accel        previous ego acceleration / 3 m/s^2          [-1, 1]
+    12   lag_headway       lag gap / v_lag, clip [0,4] s, /2 - 1        [-1, 1]
 
 A negative gap means the highway car is (partly) alongside the ego, which
-is what blocks a merge. Index 11 is needed so that the policy can see the
-jerk it would cause.
+is what blocks a merge. Index 11 lets the policy see the jerk it would
+cause; index 12 tells it how hard the lag car will have to brake.
 
 Action: Box([-1], [1]) scaled to acceleration in [-3, +3] m/s^2.
 
@@ -89,8 +90,8 @@ DEFAULT_CONFIG = {
     "reward": {
         "w_speed": 0.05,
         "w_jerk": 0.02,
-        "w_ttc": 0.1,
-        "w_brake": 0.2,
+        "w_ttc": 0.3,
+        "w_brake": 1.0,
         "w_stop": 0.1,
         "w_time": 0.02,
         "R_merge": 5.0,
@@ -116,7 +117,7 @@ class MergeEnv(gym.Env):
     """On-ramp merging with one learning ego car and IDM highway traffic."""
 
     metadata = {"render_modes": ["rgb_array"]}
-    OBS_DIM = 12
+    OBS_DIM = 13
 
     def __init__(self, config: dict | None = None):
         super().__init__()
@@ -182,6 +183,9 @@ class MergeEnv(gym.Env):
         lead_gap, lead_v, lag_gap, lag_v, _ = self._neighbours()
         zone = c["merge_end"] - c["merge_start"]
         lag_ttc = min(self._ttc(lag_gap, lag_v - self.v), TTC_CLIP)
+        # Lag-car headway (gap / own speed): the quantity that decides how
+        # hard the lag car must brake after a merge (IDM time gap T is 1-1.8 s).
+        lag_headway = min(max(lag_gap, 0.0) / max(lag_v, 1.0), 4.0)
         obs = [
             self.v / V_SCALE,
             np.clip((self.x - c["merge_start"]) / zone, -1.5, 1.5),
@@ -195,6 +199,7 @@ class MergeEnv(gym.Env):
             lag_v / V_SCALE,
             self.density / 50.0,
             self.a / A_MAX,
+            lag_headway / 2.0 - 1.0,
         ]
         return np.asarray(obs, dtype=np.float32)
 
