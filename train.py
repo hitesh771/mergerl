@@ -8,7 +8,8 @@ Writes <out>/log.csv with one row per log interval:
     step, mean_return, success_rate, collision_rate, fail_rate, density_hi
 (statistics over the episodes finished since the previous row) and saves the
 final model to checkpoints/<name>.pt, where <name> is the last part of --out.
-Training seeds are 0..99; evaluation uses seeds >= 1000 (see eval.py).
+Env seeds used in training are seed*100 + env index (< 1000 for seeds 0-9);
+evaluation uses env seeds >= 1000 (see eval.py).
 """
 import argparse
 import csv
@@ -58,7 +59,7 @@ def set_density(envs: list, density_range: list) -> None:
 def train_ppo(cfg: dict, seed: int, total_steps: int, logger: CsvLogger, ckpt: Path) -> None:
     from agents.ppo import PPO, VecEnv
     pc = cfg["ppo"]
-    venv = VecEnv(lambda: MergeEnv(cfg["env"]), pc["n_envs"], seed=seed * 1000)
+    venv = VecEnv(lambda: MergeEnv(cfg["env"]), pc["n_envs"], seed=seed * 100)
     agent = PPO(MergeEnv.OBS_DIM, 1, pc)
     batch_steps = pc["n_envs"] * pc["n_steps"]
     n_iters = max(total_steps // batch_steps, 1)
@@ -84,7 +85,7 @@ def train_dqn(cfg: dict, seed: int, total_steps: int, logger: CsvLogger, ckpt: P
     dc = cfg["dqn"]
     env = DiscreteActionWrapper(MergeEnv(cfg["env"]), dc["n_actions"])
     agent = DQN(MergeEnv.OBS_DIM, dc["n_actions"], dc, seed=seed)
-    obs, _ = env.reset(seed=seed * 1000)
+    obs, _ = env.reset(seed=seed * 100)
     ep_return, episodes, t0 = 0.0, [], time.time()
     log_every = max(total_steps // 100, 1000)
     for step in range(1, total_steps + 1):
