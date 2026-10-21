@@ -1,0 +1,53 @@
+# Default experiment configuration.
+# Other configs may start with `base: default.yaml` and only override keys.
+
+env:
+  density_range: [10.0, 45.0]     # veh/km, sampled per episode
+  reward:
+    w_speed: 0.05
+    w_jerk: 0.02
+    w_ttc: 0.3
+    w_brake: 1.0
+    w_stop: 0.1
+    w_time: 0.02
+    R_merge: 5.0
+    R_complete: 5.0
+    R_col: 20.0
+    R_fail: 10.0
+
+# Curriculum: the training density range grows in stages. `until` is the
+# fraction of the total training steps at which the stage ends.
+curriculum:
+  - {until: 0.2, density_range: [10.0, 20.0]}   # light traffic
+  - {until: 0.5, density_range: [10.0, 35.0]}   # medium traffic
+  - {until: 1.0, density_range: [10.0, 45.0]}   # heavy traffic
+
+ppo:
+  n_envs: 16
+  n_steps: 256          # per env -> 4096 transitions per update
+  n_epochs: 10
+  n_minibatches: 8
+  gamma: 0.99
+  lam: 0.95
+  clip: 0.2
+  clip_v: 10.0
+  vf_coef: 0.5
+  ent_coef: 0.0
+  lr: 3.0e-4
+  max_grad_norm: 0.5
+  hidden: 64
+
+dqn:
+  n_actions: 7
+  buffer_size: 200000
+  batch_size: 256
+  gamma: 0.99
+  lr: 5.0e-4
+  learning_starts: 5000
+  train_every: 1
+  target_update: 2000   # steps between hard target-network copies
+  eps_start: 1.0
+  eps_end: 0.05
+  eps_fraction: 0.3     # fraction of training over which epsilon decays
+  hidden: 128
+  max_grad_norm: 10.0

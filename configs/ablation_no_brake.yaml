@@ -1,0 +1,5 @@
+# Reward ablation: brake term removed.
+base: default.yaml
+env:
+  reward:
+    w_brake: 0.0

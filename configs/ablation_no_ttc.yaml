@@ -1,0 +1,5 @@
+# Reward ablation: ttc term removed.
+base: default.yaml
+env:
+  reward:
+    w_ttc: 0.0

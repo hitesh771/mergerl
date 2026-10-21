@@ -1,0 +1,5 @@
+# Reward ablation: speed term removed.
+base: default.yaml
+env:
+  reward:
+    w_speed: 0.0

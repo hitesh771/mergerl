@@ -1,0 +1,5 @@
+# Reward ablation: jerk term removed.
+base: default.yaml
+env:
+  reward:
+    w_jerk: 0.0
