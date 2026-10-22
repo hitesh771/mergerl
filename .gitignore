@@ -9,3 +9,4 @@ results/tmp/
 # keep final model checkpoints (small) but ignore scratch ones
 checkpoints/smoke_*
 checkpoints/tmp_*
+results/logs/
