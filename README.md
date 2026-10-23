@@ -18,7 +18,7 @@ scratch in numpy / PyTorch.
 |---|---|
 | Simulation | 1-D longitudinal, dt = 0.1 s, agent acts every 2 sub-steps (5 Hz) |
 | Road | highway 0–700 m; acceleration lane with merge zone 200–320 m and a hard end at 320 m |
-| Traffic | IDM cars, per-car driver parameters between "cautious" and "aggressive", density ρ ~ U(10, 45) veh/km per episode, steady inflow upstream |
+| Traffic | IDM cars, per-car driver parameters between "cautious" and "aggressive", density ρ ~ U(10, 55) veh/km per episode, steady inflow upstream |
 | Action | a ∈ [-1, 1] → acceleration in [-3, +3] m/s² (DQN: 7 levels -3, -2, …, +3) |
 | Merge | automatic as soon as the ego is in the zone and both highway gaps are ≥ 2 m. This is deliberately permissive, so bad cut-ins are possible. Highway IDM braking is capped at 8 m/s², so a lag car can crash into the ego |
 | Termination | collision, ramp end or 40 s timeout without merging (failure), or 8 s after the merge without a crash (success) |
@@ -48,7 +48,7 @@ A negative gap means a highway car is alongside the ego.
 | speed v / 35 | +0.05 / step | keep moving, do not block the ramp |
 | \|Δa\| / 6 (jerk) | −0.02 / step | comfort |
 | merged and TTC (lead or lag) < 2 s | −0.3 / step | unsafe proximity after merging |
-| lag car decelerates harder than 4 m/s² | −1.0 / step | forcing others to brake hard is the main safety cost |
+| lag car decelerates harder than 4 m/s² | −2.0 / step | forcing others to brake hard is the main safety cost |
 | on the ramp with v < 2 m/s | −0.1 / step | stops "wait forever" reward hacking |
 | time | −0.02 / step | merge sooner |
 | merge | +5 | |
@@ -57,7 +57,7 @@ A negative gap means a highway car is alongside the ego.
 | ramp end / timeout unmerged | −10 | smaller than a collision, so failing to merge is better than crashing |
 
 Training uses a density curriculum: 10–20 veh/km for the first 20 % of
-steps, 10–35 up to 50 %, then 10–45. Evaluation also covers 55 and 70
+steps, 10–40 up to 50 %, then 10–55. Evaluation also covers 65 and 75
 veh/km, which the agent never sees in training (generalisation).
 
 ## Methods
@@ -96,7 +96,7 @@ python -m venv .venv
 .venv/bin/python train.py --algo ppo --config configs/ablation_no_ttc.yaml --seed 0 --out results/runs/abl_no_ttc_s0
 
 # evaluate over densities (writes results/eval/<name>.csv)
-.venv/bin/python eval.py --agent ppo --ckpt checkpoints/ppo_s0.pt --name ppo_s0 --densities 10,25,40,55,70 --episodes 200 --seed 1000
+.venv/bin/python eval.py --agent ppo --ckpt checkpoints/ppo_s0.pt --name ppo_s0 --densities 10,25,40,55,65,75 --episodes 200 --seed 1000
 .venv/bin/python eval.py --agent gap        # also: idm, random, dqn
 
 # figures and GIFs

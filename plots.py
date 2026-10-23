@@ -37,7 +37,7 @@ COLORS = {"ppo": "#1f77b4", "dqn": "#ff7f0e", "gap": "#2ca02c", "idm": "#9467bd"
           "random": "#7f7f7f"}
 LABELS = {"ppo": "PPO", "dqn": "DQN", "gap": "Gap acceptance", "idm": "IDM ego",
           "random": "Random"}
-TRAIN_MAX_DENSITY = 45.0
+TRAIN_MAX_DENSITY = 55.0
 
 
 def load_eval_group(eval_dir: Path, prefix: str) -> pd.DataFrame | None:

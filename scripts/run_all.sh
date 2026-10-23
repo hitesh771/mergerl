@@ -17,7 +17,7 @@ STEPS_ABL="${STEPS_ABL:-$STEPS_PPO}"
 SEEDS="${SEEDS:-0 1 2}"
 ABL_SEEDS="${ABL_SEEDS:-0 1 2}"
 EPISODES="${EPISODES:-200}"
-DENSITIES="${DENSITIES:-10,25,40,55,70}"
+DENSITIES="${DENSITIES:-10,25,40,55,65,75}"
 JOBS="${JOBS:-10}"
 LOGS=results/logs
 mkdir -p "$LOGS" results/runs results/eval results/figures checkpoints

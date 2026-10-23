@@ -9,7 +9,7 @@ envs with seeds seed*100 + env index (< 1000 for training seeds 0-9), so
 evaluation scenarios are never used for training. Every agent faces exactly
 the same scenarios.
 
-Densities above the training range (45 veh/km) measure generalisation.
+Densities above the training range (55 veh/km) measure generalisation.
 
 Output: results/eval/<name>.csv (name = --name or the agent type) with one
 row per density and the columns listed in METRICS.
