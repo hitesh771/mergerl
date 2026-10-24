@@ -110,7 +110,7 @@ def method_handle(name: str) -> Line2D:
 # Learning curves
 # --------------------------------------------------------------------------- #
 def plot_learning_curves(runs_dir: Path, fig_dir: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(WIDTH2, 2.0))
+    fig, axes = plt.subplots(1, 2, figsize=(WIDTH, 1.9))
     handles, ppo_len = [], None
     for algo in ["ppo", "dqn"]:
         logs = [pd.read_csv(f) for f in sorted(glob.glob(str(runs_dir / f"{algo}_s*/log.csv")))]
@@ -142,11 +142,13 @@ def plot_learning_curves(runs_dir: Path, fig_dir: Path) -> None:
         plt.close(fig)
         return
 
-    axes[0].set_ylabel("training success rate ↑")
-    axes[0].set_ylim(None, 1.02)
-    axes[1].set_ylabel("mean episode return ↑")
+    axes[0].set_ylabel("train success ↑")
+    axes[0].set_ylim(None, 1.04)
+    for ax in axes:
+        ax.set_xticks([0, 1, 2, 3])
+    axes[1].set_ylabel("episode return ↑")
     for ax, tag in zip(axes, "ab"):
-        ax.set_xlabel("environment steps (×10⁶)")
+        ax.set_xlabel("env. steps (×10⁶)")
         ax.set_title(f"({tag})", loc="left")
         # Curriculum stage boundaries of the PPO runs (DQN has a shorter run,
         # so its boundaries would be at different x and are not drawn).
@@ -154,16 +156,15 @@ def plot_learning_curves(runs_dir: Path, fig_dir: Path) -> None:
             for k, frac in enumerate(CURRICULUM_STAGE_ENDS):
                 x = frac * ppo_len / 1e6
                 ax.axvline(x, color="0.5", ls=":", lw=0.8, zorder=0)
-                ax.text(x, 0.02, f" stage {k + 2}", transform=ax.get_xaxis_transform(),
+                ax.text(x, 0.02, f" S{k + 2}", transform=ax.get_xaxis_transform(),
                         ha="left", va="bottom", color="0.35")
     handles.append(Line2D([], [], color="0.5", ls=":", lw=0.8,
-                          label="PPO curriculum stage start"))
+                          label="PPO stage start"))
     fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False,
                bbox_to_anchor=(0.5, 1.0))
-    fig.text(0.5, -0.02, f"line = mean, band = ±1 std over seeds; rolling mean over "
-                         f"{SMOOTH_STEPS // 1000}k environment steps",
-             ha="center", va="top", color="0.3")
-    fig.tight_layout()
+    # Band = +-1 std over seeds; curves are a rolling mean over SMOOTH_STEPS
+    # environment steps (stated in the report caption).
+    fig.tight_layout(w_pad=0.6)
     save(fig, fig_dir, "learning_curves")
 
 
@@ -194,7 +195,10 @@ def plot_density_sweep(evals: dict, fig_dir: Path) -> None:
         ax.set_ylabel(label)
         ax.set_title(f"({tag})", loc="left")
         ax.set_xlim(x_lo, x_hi)
+        # Label every other density so the ticks 55/65/75 do not collide.
         ax.set_xticks(densities)
+        ax.set_xticklabels([f"{d:.0f}" if i % 2 == 0 or d == densities[-1] else ""
+                            for i, d in enumerate(densities)])
         ax.axvspan(TRAIN_MAX_DENSITY + 2.5, x_hi, color="0.88", lw=0, zorder=0)
         if is_rate:
             ax.set_ylim(-0.03, 1.03)
@@ -263,12 +267,12 @@ def plot_generalisation(evals: dict, fig_dir: Path) -> None:
 # Reward ablation
 # --------------------------------------------------------------------------- #
 def plot_ablation(eval_dir: Path, fig_dir: Path) -> None:
-    variants = [("ppo", "full reward")] + [(f"abl_no_{t}", f"no {t}")
+    variants = [("ppo", "full reward")] + [(f"abl_no_{t}", f"no {t.upper() if t == 'ttc' else t}")
                                            for t in ["jerk", "ttc", "speed", "brake"]]
     # (column, title, value format for the bar labels)
-    metrics = [("collision_rate", "collision rate ↓", "{:.3f}"),
-               ("fail_rate", "fail rate ↓", "{:.3f}"),
-               ("hard_brake_rate", "lag hard-brake rate ↓", "{:.2f}"),
+    # Collision / fail rates are ~0 for every variant (see the README table),
+    # so the figure shows the two metrics where the terms differ.
+    metrics = [("hard_brake_rate", "lag hard-brake rate ↓", "{:.2f}"),
                ("mean_abs_jerk", "mean |jerk| [m/s³] ↓", "{:.2f}")]
     rows, n_seeds = [], 0
     for prefix, label in variants:
@@ -284,12 +288,12 @@ def plot_ablation(eval_dir: Path, fig_dir: Path) -> None:
         print("no ablation results, skipping ablation plot")
         return
 
-    fig, axes = plt.subplots(1, len(metrics), figsize=(WIDTH2, 1.9))
+    fig, axes = plt.subplots(1, len(metrics), figsize=(WIDTH, 1.9))
     x = np.arange(len(rows))
     # Dark bar = full reward (reference), light hatched bars = one term removed.
     colors = ["#08519c"] + ["#9ecae1"] * (len(rows) - 1)
     hatches = [""] + ["//"] * (len(rows) - 1)
-    for ax, (col, title, fmt), tag in zip(axes, metrics, "abcd"):
+    for ax, (col, title, fmt), tag in zip(axes, metrics, "cd"):
         means = np.array([r[1][col] for r in rows])
         stds = np.array([r[2][col] for r in rows])
         is_rate = col.endswith("_rate")
@@ -298,18 +302,16 @@ def plot_ablation(eval_dir: Path, fig_dir: Path) -> None:
                edgecolor="k", lw=0.4)
         top = (means + stds).max()
         for xi, m, s in zip(x, means, stds):
-            ax.text(xi, m + s + 0.02 * top, fmt.format(m), ha="center", va="bottom",
-                    rotation=90)
+            ax.text(xi, m + s + 0.10 * top, fmt.format(m), ha="center", va="bottom",
+                    fontsize=6.5)
         ax.set_ylim(0, 1.8 * top if top > 0 else 0.01)
         ax.yaxis.set_major_locator(MaxNLocator(4))
         ax.set_xticks(x, [r[0] for r in rows], rotation=45, ha="right",
                       rotation_mode="anchor")
-        ax.set_title(f"({tag}) {title}", loc="left")
+        ax.set_title(f"({tag}) {title}", loc="left", fontsize=8)
         ax.grid(axis="x", visible=False)
+    # PPO, mean +- 1 std over n_seeds seeds, densities 10-55 (report caption).
     fig.tight_layout(w_pad=0.8)
-    fig.text(0.5, -0.02, f"PPO, mean ± 1 std over {n_seeds} seeds, averaged over the training "
-                         f"densities 10–{TRAIN_MAX_DENSITY:.0f} veh/km",
-             ha="center", va="top", color="0.3")
     save(fig, fig_dir, "ablation")
 
 
@@ -446,7 +448,7 @@ def plot_merge_snapshot(ckpt: str, fig_dir: Path, density: float, seed: int) -> 
         s = states[i]
         draw_scene(ax, env.cfg, s)
         rel = s["t"] - t_merge
-        when = "merge" if i == merge_idx else f"merge {rel:+.1f} s"
+        when = "merge" if i == merge_idx else f"merge {rel:+.1f} s".replace("-", "\u2212")
         ax.set_title(f"t = {s['t']:.1f} s ({when}), v = {s['v']:.1f} m/s", loc="left",
                      pad=2)
         ax.tick_params(axis="x", length=2)
