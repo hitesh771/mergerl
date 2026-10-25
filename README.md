@@ -115,19 +115,37 @@ scenarios for every agent, so training and evaluation never overlap.
 
 ## Results
 
-Fill in from `results/eval/*.csv` after `scripts/run_all.sh`. Mean over 3
-seeds, 200 episodes per density.
+Mean over 3 seeds (baselines: one deterministic run), 200 episodes per
+density. "Seen" = densities 10, 25, 40, 55 veh/km (inside the training
+range); "unseen" = 65, 75 veh/km. Lag hard-brake rate = share of episodes in
+which the highway car behind the ego brakes harder than 4 m/s².
 
-| agent | success ↑ | collision ↓ | lag hard-brake rate ↓ | mean \|jerk\| ↓ | time to merge |
-|---|---|---|---|---|---|
-| PPO | | | | | |
-| DQN | | | | | |
-| Gap acceptance | | | | | |
-| IDM ego | | | | | |
-| Random | | | | | |
+| agent | success ↑ (seen) | collision ↓ (seen) | lag hard-brake ↓ (seen) | mean \|jerk\| [m/s³] ↓ (seen) | time to merge [s] (seen) | success ↑ (unseen) | collision ↓ (unseen) |
+|---|---|---|---|---|---|---|---|
+| **PPO** | **0.994** | **0.0004** | 0.13 | 1.29 | **7.8** | **0.705** | **0.001** |
+| DQN | 0.965 | 0.025 | 0.17 | 4.22 | 9.4 | 0.584 | 0.046 |
+| Gap acceptance | 0.930 | 0.026 | 0.33 | **0.58** | 9.8 | 0.112 | 0.020 |
+| IDM ego | 0.610 | 0.390 | **0.10** | 0.67 | 7.0 | 0.143 | 0.820 |
+| Random | 0.520 | 0.455 | 0.28 | 9.99 | 8.6 | 0.002 | 0.872 |
 
-Figures: `results/figures/learning_curves.pdf`, `density_sweep.pdf`,
-`ablation.pdf`, `generalisation.pdf`, `trace.pdf`, plus `*_merge.gif`.
+Reward ablation (PPO, 3 seeds, seen densities): removing the brake term
+doubles the lag hard-brake rate (0.12 → 0.25); removing the jerk term raises
+|jerk| (1.29 → 1.46); removing the TTC term gives the most collisions;
+removing the speed term makes the agent 22 % slower (17.5 → 13.6 m/s).
+
+Figures (PDF + PNG) in `results/figures/`: `density_sweep`, `learning_curves`,
+`ablation`, `generalisation`, `trace`, `merge_snapshot`, plus
+`ppo_merge.gif` / `gap_merge.gif`. The report is `report/report.pdf`
+(source `report/report.tex`, build with `pdflatex report.tex` twice).
+
+Trained models: `checkpoints/ppo_s{0,1,2}.pt`, `dqn_s{0,1,2}.pt` and the
+ablation models `abl_no_*_s{0,1,2}.pt`. To evaluate a saved model without
+retraining:
+
+```bash
+.venv/bin/python eval.py --agent ppo --ckpt checkpoints/ppo_s0.pt --name ppo_s0 \
+    --densities 10,25,40,55,65,75 --episodes 200 --seed 1000
+```
 
 ## Repository layout
 
