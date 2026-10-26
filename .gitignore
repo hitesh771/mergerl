@@ -10,3 +10,8 @@ results/tmp/
 checkpoints/smoke_*
 checkpoints/tmp_*
 results/logs/
+
+# LaTeX build files
+report/*.aux
+report/*.log
+report/*.out
